@@ -82,7 +82,7 @@ class UserThread(threading.Thread):
                 conn.close()
                 self._user_connected.clear()
                 continue
-            
+
             aesgcm = AESGCM(self._user_key[0])
 
             nonce = os.urandom(12)
@@ -100,7 +100,7 @@ class UserThread(threading.Thread):
             while True:
                 if(self._data_to_user.qsize() != 0):
                     data = self._data_to_user.get()
-                    self._thread_output.put("Sending data to user " + data)
+                    self._thread_output.put(">> Sending " + data)
                     nonce = os.urandom(12)
                     # data = data + ";"
                     data = data.encode('utf-8')

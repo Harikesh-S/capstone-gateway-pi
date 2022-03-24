@@ -97,7 +97,7 @@ class BleThread(threading.Thread):
                                             "Invalid light data received")
                                     if(light_valid and temp_valid):
                                         self._data_from_peripherals.put(
-                                            {"id": p["id"], "time": time.time(), "data": data})
+                                            {"id": p["id"], "field": "output-values", "time": time.time(), "data": data})
                                     break
                                 except:
                                     self._thread_output.put(
@@ -105,20 +105,28 @@ class BleThread(threading.Thread):
 
                             # If there is any data to be sent to this node, encrypt it and send it
                             for d in self._data_to_be_sent:
-                                if d[0] == p["id"]:
-                                    try:
+                                if(d[0] == p["id"]):
+                                    if(d[1] == 0):
+                                        try:
+                                            self._thread_output.put(
+                                                "Setting deep sleep time of node {} to {}".format(d[0], d[2]))
+                                            nonce = os.urandom(12)
+                                            data = d[2] + ";"
+                                            data = data.ljust(
+                                                16, ';').encode('utf-8')
+                                            ct = aesgcm.encrypt(
+                                                nonce, data, None)
+                                            sleep_char.write(nonce+ct)
+                                            self._data_to_be_sent.remove(d)
+                                            self._data_from_peripherals.put(
+                                                {"id": p["id"], "field": "input-values", "time": time.time(),
+                                                 "index": d[1], "data": d[2]})
+                                        except:
+                                            self._thread_output.put(
+                                                "Error sending data")
+                                    else:
                                         self._thread_output.put(
-                                            "Sending {} to node {}".format(d[1], d[0]))
-                                        nonce = os.urandom(12)
-                                        data = d[1] + ";"
-                                        data = data.ljust(
-                                            16, ';').encode('utf-8')
-                                        ct = aesgcm.encrypt(nonce, data, None)
-                                        sleep_char.write(nonce+ct)
-                                        self._data_to_be_sent.remove(d)
-                                    except:
-                                        self._thread_output.put(
-                                            "Error sending data")
+                                            "Invalid index - not sending data")
                             self._thread_output.put(
                                 "Disconnecting from sensor {}".format(p["id"]))
                             peripheral.disconnect()
@@ -138,7 +146,7 @@ class BleThread(threading.Thread):
                 _ret += "Adding sensor node with Temp, Light sensor and deep sleep timer\n"
                 gateway_data["nodes"][p["id"]] = {"output-tags": ["Temperature (°C)", "Relative Humidity (%)", "Heat Index (°C)", "Light (0-4095)"],
                                                   "output-values": ["Loading", "Loading", "Loading", "Loading"],
-                                                  "input-tags": ["Sleep time (seconds)"], "input-values": ["Loading"]}
+                                                  "input-tags": ["Sleep time (seconds)"], "input-values": ["10"]}
             elif p["type"] == "a1":
                 _ret += "TODO actuator 1\n"
             else:
