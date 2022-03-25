@@ -14,7 +14,9 @@ from usertcp import UserThread
 class Node:
     _PERIPHERALS = [
         {"addr": "78:21:84:87:c5:e6", "id": "1",
-            "type": "s1", "key": b"abcdefghijklmnop"}
+            "type": "s1", "key": b"abcdefghijklmnop"},
+        {"addr": "78:21:84:89:44:e6", "id": "2",
+            "type": "a1", "key": b"ponmlkjihgfedcba"},
     ]
     _exit_event = threading.Event()
 
@@ -83,6 +85,7 @@ class Node:
                     box = Textbox(main_window_input_box)
                     box.edit()
                     data = box.gather().strip().replace("\n", "").split(";")
+                    data[1] = int(data[1])
                     self._data_to_peripherals.put(data)
                     main_window_input_box.clear()
                     main_window_input_box.refresh()

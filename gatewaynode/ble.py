@@ -133,6 +133,57 @@ class BleThread(threading.Thread):
 
                         except:
                             self._thread_output.put("Failed to connect")
+                    
+                    if p["type"] == "a1":
+                        # Actuator node 1 - has one input char, stays awake
+                        connect = False
+                        for d in self._data_to_be_sent:
+                            if(d[0] == p["id"]):
+                                connect = True
+                                break
+                        if connect:
+                            self._thread_output.put(
+                                "Connecting to sensor {}".format(p["id"]))
+                            try:
+                                peripheral = btle.Peripheral(p["addr"])
+                                peripheral.setMTU(100)
+                                svc = peripheral.getServiceByUUID(
+                                    "86df3990-4bdf-442e-8eb7-04bbd173e4a7")
+                                led_char = svc.getCharacteristics(
+                                    "8a7a1f1d-3cc0-4fe7-ab8a-d75fbcfb1a7b")[0]
+                                aesgcm = AESGCM(p["key"])
+
+                                # Send all data that is queued up for this node
+                                for d in self._data_to_be_sent:
+                                    if(d[0] == p["id"]):
+                                        if(d[1] == 0):
+                                            try:
+                                                self._thread_output.put(
+                                                    "Setting led value time of node {} to {}".format(d[0], d[2]))
+                                                nonce = os.urandom(12)
+                                                data = d[2] + ";"
+                                                data = data.ljust(
+                                                    16, ';').encode('utf-8')
+                                                ct = aesgcm.encrypt(
+                                                    nonce, data, None)
+                                                led_char.write(nonce+ct)
+                                                self._data_to_be_sent.remove(d)
+                                                self._data_from_peripherals.put(
+                                                    {"id": p["id"], "field": "input-values", "time": time.time(),
+                                                    "index": d[1], "data": d[2]})
+                                            except:
+                                                self._thread_output.put(
+                                                    "Error sending data")
+                                        else:
+                                            self._thread_output.put(
+                                                "Invalid index - not sending data")
+                                self._thread_output.put(
+                                    "Disconnecting from sensor {}".format(p["id"]))
+                                peripheral.disconnect()
+
+                            except:
+                                self._thread_output.put("Failed to connect")
+                    
 
         self._thread_output.put("Exiting")
 
@@ -148,7 +199,10 @@ class BleThread(threading.Thread):
                                                   "output-values": ["Loading", "Loading", "Loading", "Loading"],
                                                   "input-tags": ["Sleep time (seconds)"], "input-values": ["10"]}
             elif p["type"] == "a1":
-                _ret += "TODO actuator 1\n"
+                _ret += "Adding actuator node with one LED sensor\n"
+                gateway_data["nodes"][p["id"]] = {"output-tags": [],
+                                                  "output-values": [],
+                                                  "input-tags": ["LED value"], "input-values": ["0"]}
             else:
                 _ret += "Invlaid peripheral type\n"
         return _ret
