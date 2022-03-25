@@ -20,7 +20,8 @@ class Node:
     ]
     _exit_event = threading.Event()
 
-    _gateway_data = {"type": "gateway", "options": {"TODO": True}, "nodes": {}}
+    _gateway_data = {"type": "gateway", "options": {
+        "Automatic Light Control": True}, "nodes": {}}
     _gateway_data_lock = threading.Lock()
 
     _user_connected = threading.Event()
@@ -123,6 +124,20 @@ class Node:
                                                                            ]["output-values"])):
                                 self._gateway_data["nodes"][new_data["id"]
                                                             ]["output-values"][i] = new_data_values[i]
+
+                            # Automatic Light Control from input
+                            # TODO improve this later
+                            if(self._gateway_data["options"]["Automatic Light Control"]):
+                                if(new_data["id"] == "1"):
+                                    main_window_text.addstr(
+                                        "Automatic light control, data from node 1\n")
+                                    light_level = int(new_data_values[3])
+                                    led_value = 254-int(light_level * 0.0622)
+                                    main_window_text.addstr(
+                                        "Light level : %d, Led value : %d\n" % (light_level, led_value))
+                                    self._data_to_peripherals.put(
+                                        ["2", 0, str(led_value)])
+
                         if(new_data["field"] == "input-values"):
                             self._gateway_data["nodes"][new_data["id"]
                                                         ]["input-values"][new_data["index"]] = new_data["data"]
@@ -155,6 +170,19 @@ class Node:
                             main_window_text.addstr(
                                 "Data to be sent : "+json.dumps(message[1:])+"\n")
                             self._data_to_peripherals.put(message[1:])
+                        if(message[0] == "set-option"):
+                            try:
+                                self._gateway_data_lock.acquire()
+                                self._gateway_data["options"][message[1]
+                                                              ] = message[2]
+                                main_window_text.addstr(
+                                    "Option set : "+message[1]+" = "+str(message[2])+". Updating user...\n")
+                                self._data_to_user.put(
+                                    "[\"options\","+json.dumps(self._gateway_data["options"])+"]")
+                            except Exception as e:
+                                main_window_text.addstr(e.__class__.__name__)
+                            finally:
+                                self._gateway_data_lock.release()
                     except Exception as e:
                         main_window_text.addstr(
                             "Error: "+e.__class__.__name__+"\n")
