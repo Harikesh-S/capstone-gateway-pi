@@ -132,7 +132,8 @@ class Node:
                                     main_window_text.addstr(
                                         "Automatic light control, data from node 1\n")
                                     light_level = int(new_data_values[3])
-                                    led_value = 254-int(light_level * 0.0622)
+                                    # led_value = 254-int(light_level * 0.0622)
+                                    led_value = 4095 - int(light_level)
                                     main_window_text.addstr(
                                         "Light level : %d, Led value : %d\n" % (light_level, led_value))
                                     self._data_to_peripherals.put(
