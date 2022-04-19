@@ -2,6 +2,8 @@ import threading
 import socket
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import secrets
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_v1_5
 
 
 class ServerThread(threading.Thread):
@@ -56,17 +58,20 @@ class ServerThread(threading.Thread):
                 conn.close()
                 continue
 
-            if(message[12:] == "KEY"):
+            if(message[:3] == "KEY"):
                 if(not self._user_connected.is_set()):
                     key = secrets.token_bytes(16)
-                    #keygen = b"abcdefghijklmnop"
 
                     self._user_key[0] = key
-                    #self._set_user_key(key)
                     self._thread_output.put("Generated new key")
-                    nonce = bytes(message[:12], 'utf-8')
-                    ct = aesgcm.encrypt(nonce, key, None)
-                    conn.sendall(nonce+ct)
+
+                    # nonce = bytes(message[:12], 'utf-8')
+                    # ct = aesgcm.encrypt(nonce, key, None)
+                    # conn.sendall(nonce+ct)
+                    pubKey = RSA.importKey(message[3:])
+                    encryptor = PKCS1_v1_5.new(pubKey)
+                    encrypted = encryptor.encrypt(key)
+                    conn.sendall(encrypted)
                 else:
                     self._thread_output.put(
                         "Another user is connected - not generating key")
