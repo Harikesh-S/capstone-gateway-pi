@@ -118,12 +118,24 @@ class BleThread(threading.Thread):
                                                 nonce, data, None)
                                             sleep_char.write(nonce+ct)
                                             self._data_to_be_sent.remove(d)
-                                            self._data_from_peripherals.put(
-                                                {"id": p["id"], "field": "input-values", "time": time.time(),
-                                                 "index": d[1], "data": d[2]})
+
                                         except:
                                             self._thread_output.put(
                                                 "Error sending data")
+
+                                        # Reading the value again to get the actual value stored in the node
+                                        time.sleep(0.1)
+                                        try:
+                                            sleepCharRead = sleep_char.read()
+                                            message = aesgcm.decrypt(sleepCharRead[:12], sleepCharRead[12:], None).split(b'\x00')[
+                                                0].decode()
+                                            self._thread_output.put("Valid sleep time data read")
+                                            sleepVal = message.split(';')[0]
+                                            self._data_from_peripherals.put(
+                                                {"id": p["id"], "field": "input-values", "time": time.time(), 
+                                                "index": 0, "data": sleepVal})
+                                        except:
+                                            self._thread_output.put("Invalid sleep time data read")
                                     else:
                                         self._thread_output.put(
                                             "Invalid index - not sending data")
@@ -168,12 +180,25 @@ class BleThread(threading.Thread):
                                                     nonce, data, None)
                                                 led_char.write(nonce+ct)
                                                 self._data_to_be_sent.remove(d)
-                                                self._data_from_peripherals.put(
-                                                    {"id": p["id"], "field": "input-values", "time": time.time(),
-                                                    "index": d[1], "data": d[2]})
+                                                
                                             except:
                                                 self._thread_output.put(
                                                     "Error sending data")
+
+                                            # Reading the value again to get the actual value stored in the node
+                                            time.sleep(0.1)
+                                            try:
+                                                ledCharRead = led_char.read()
+                                                message = aesgcm.decrypt(ledCharRead[:12], ledCharRead[12:], None).split(b'\x00')[
+                                                    0].decode()
+                                                self._thread_output.put(
+                                                    "Valid led value data read")
+                                                ledVal = message.split(';')[0]
+                                                self._data_from_peripherals.put(
+                                                    {"id": p["id"], "field": "input-values", "time": time.time(), 
+                                                    "index": 0, "data": ledVal})
+                                            except:
+                                                self._thread_output.put("Invalid led data read")
                                         else:
                                             self._thread_output.put(
                                                 "Invalid index - not sending data")
